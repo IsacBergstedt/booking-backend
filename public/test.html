@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket.IO Test</title>
+</head>
+<body>
+  <h1>Socket.IO testklient</h1>
+  <p id="status">Ansluter...</p>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:5000');
+
+    socket.on('connect', () => {
+      document.getElementById('status').innerText = 'Ansluten till Socket.IO!';
+      console.log('Ansluten som:', socket.id);
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('status').innerText = ' Frånkopplad';
+    });
+
+    // Lyssna på en testnotis
+    socket.on('newBooking', (data) => {
+      alert('Ny bokning mottagen: ' + JSON.stringify(data));
+    });
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@ git clone https://github.com/<user>/booking-backend.git
 cd booking-backend
 npm install
 
-## .env:
+.env:
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/booking
 JWT_SECRET=superhemligjwtkod
@@ -15,12 +15,12 @@ cd booking backend
 npm start
 
 
-## Api-dokumentation
+Api-dokumentation
 POST /register – Skapa konto
 
 POST /login – Logga in (returnerar JWT-token)
 
-## Rum (endast Admin)
+Rum (endast Admin)
 POST /rooms – Skapa rum
 
 GET /rooms – Lista alla rum
@@ -41,10 +41,10 @@ DELETE /bookings/:id – Ta bort bokning
 
 
 
-## stack:
+stack:
 - Node.js & Express
 - MongoDB + Mongoose
-- Redis (Caching)
-- JWT (Autentisering)
+- Redis (Caching av rum)
+- JWT 
 - Socket.IO (Notifieringar)
 - Deployment: Render

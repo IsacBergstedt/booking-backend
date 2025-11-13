@@ -1,23 +1,31 @@
 const Room = require('../models/Room');
-const { client } = require('../redisClient')
+const { client, connectRedis } = require('../redisClient');
+const socket = require('../socket');
+
+
 
 
 //Admin kan skapa nytt rum
 exports.createRoom = async (req, res) => {
     try {
-        const { name, capacity, type } = req.body;
+        await connectRedis(); 
 
-        const newRoom = new Room({ name, capacity, type});
+        const { name, capacity, type } = req.body;
+        const newRoom = new Room({ name, capacity, type });
         await newRoom.save();
 
-        await client.del('rooms'); //rensar cache
+        await client.del('rooms'); 
 
-        res.status(201).json({message: 'Rum skapades', room: newRoom});
+        const io = socket.getIO();
+        io.emit('newRoom', {
+            message: 'Nytt rum skapat',
+            room: { id: newRoom._id, name: newRoom.name, capacity: newRoom.capacity }
+        });
 
+        res.status(201).json({ message: 'Rum skapades', room: newRoom });
     } catch (err) {
-       console.error('Fel vid skapande av rum:', err);
-        res.status(500).json({message: 'Fel vid skapande av rum'});
-
+        console.error('Fel vid skapande av rum:', err);
+        res.status(500).json({ message: 'Fel vid skapande av rum' });
     }
 };
 

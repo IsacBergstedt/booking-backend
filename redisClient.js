@@ -1,7 +1,7 @@
 const { createClient } = require('redis');
 
 const client = createClient({
-    url: 'redis://localhost:6379'
+    url: 'redis://:hej@172.29.88.168:6379'
 });
 
 client.on('error', (err) => {

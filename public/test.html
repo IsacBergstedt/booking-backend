@@ -9,21 +9,26 @@
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
-    const socket = io('http://localhost:5000');
+  const socket = io('http://localhost:5000');
 
-    socket.on('connect', () => {
-      document.getElementById('status').innerText = 'Ansluten till Socket.IO!';
-      console.log('Ansluten som:', socket.id);
-    });
+  socket.on('connect', () => {
+    document.getElementById('status').innerText = 'Ansluten till Socket.IO!';
+    console.log('Ansluten som:', socket.id);
+  });
 
-    socket.on('disconnect', () => {
-      document.getElementById('status').innerText = ' Frånkopplad';
-    });
+  socket.on('disconnect', () => {
+    document.getElementById('status').innerText = 'Frånkopplad';
+    console.log('Frånkopplad');
+  });
 
-    // Lyssna på en testnotis
-    socket.on('newBooking', (data) => {
-      alert('Ny bokning mottagen: ' + JSON.stringify(data));
-    });
-  </script>
+  socket.on('newUser', data => alert('Ny användare registrerad: ' + JSON.stringify(data)));
+  socket.on('userLogin', data => alert('Användare loggade in: ' + JSON.stringify(data)));
+  socket.on('newRoom', data =>  alert('Nytt rum skapat: ' + JSON.stringify(data)));
+  socket.on('newBooking', data => alert('Ny bokning: ' + JSON.stringify(data)));
+  socket.on('updateBooking', data => alert('Bokning uppdaterad: ' + JSON.stringify(data)));
+  socket.on('deleteBooking', data => alert('Bokning borttagen: ' + JSON.stringify(data)));
+</script>
+
+
 </body>
 </html>

@@ -1,5 +1,5 @@
 // server.js
-const path = require('path'); 
+const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -27,13 +27,13 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/bookings', bookingRoutes);
 
 app.get('/', (req, res) => {
-  res.send('Bokningsplattformen är igång');
+  res.send('Bokningsplattformen är igång 🚀');
 });
 
 const server = http.createServer(app);
 
-// Initiera Socket.IO korrekt via socket.js
-const io = socket.init(server);  // <-- här initierar vi och sparar i io
+// SOCKET.IO 
+const io = socket.init(server);
 
 io.on('connection', (socketClient) => {
   console.log('Klient ansluten med socket id:', socketClient.id);
@@ -43,40 +43,43 @@ io.on('connection', (socketClient) => {
   });
 });
 
+// REDIS 
 let redisClient;
 
 const connectRedis = async () => {
-  redisClient = createClient({
-    socket: {
-      host: process.env.REDIS_HOST, 
-      port: process.env.REDIS_PORT,
-    },
-    password: process.env.REDIS_PASSWORD, 
-  });
+  try {
+    redisClient = createClient({
+      url: process.env.REDIS_URL,  
+      socket: {
+        tls: true,                
+        rejectUnauthorized: false,
+      },
+    });
 
-  redisClient.on('connect', () => console.log('Connected to Redis'));
-  redisClient.on('error', (err) => console.error('Redis connection error:', err));
+    redisClient.on('connect', () => console.log(' Connected to Redis'));
+    redisClient.on('error', (err) => console.error(' Redis connection error:', err));
 
-  await redisClient.connect();
+    await redisClient.connect();
+  } catch (err) {
+    console.error(' Redis connection failed:', err);
+  }
 };
 
+// --- STARTA SERVER ---
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
-    // MongoDB
     await mongoose.connect(process.env.MONGO_URI);
-    console.log('MongoDB connected');
+    console.log(' MongoDB connected');
 
-    // Redis
     await connectRedis();
 
-    // Starta server
     server.listen(PORT, () => {
       console.log(`Servern är igång på port ${PORT}`);
     });
   } catch (error) {
-    console.error('Fel vid start:', error.message);
+    console.error(' Fel vid start:', error.message);
     process.exit(1);
   }
 };

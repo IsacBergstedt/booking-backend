@@ -27,7 +27,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/bookings', bookingRoutes);
 
 app.get('/', (req, res) => {
-  res.send('Bokningsplattformen är igång 🚀');
+  res.send('Bokningsplattformen är igång');
 });
 
 const server = http.createServer(app);

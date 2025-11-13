@@ -6,10 +6,7 @@ git clone https://github.com/<user>/booking-backend.git
 cd booking-backend
 npm install
 
-.env:
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/booking
-JWT_SECRET=superhemligjwtkod
+
 
 cd booking backend
 npm start

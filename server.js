@@ -6,7 +6,6 @@ const cors = require('cors');
 const http = require('http');
 const socket = require('./socket');
 
-// Läser .env tidigt
 dotenv.config();
 
 // Routes
@@ -14,6 +13,7 @@ const authRoutes = require('./routes/authRoutes');
 const protectedRoutes = require('./routes/protectedTest');
 const roomRoutes = require('./routes/roomRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 // Init app
 const app = express();
@@ -28,6 +28,7 @@ app.use('/api/protected', protectedRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/users', userRoutes);
 
 // Root
 app.get('/', (req, res) => res.send('Bokningsplattformen är igång'));
@@ -61,5 +62,5 @@ const startServer = async () => {
 
 startServer();
 
-// Upstash Redis import, initieras när den används
+// Upstash Redis import
 require('./redisClient');

@@ -25,18 +25,32 @@ exports.createRoom = async (req, res) => {
 
 exports.getRooms = async (req, res) => {
   try {
-    const cached = await redis.get('rooms');
+    // Kontrollera cache 
+    const cachedRooms = await redis.get('rooms');
 
-    if (cached) {
+    if (cachedRooms) {
       console.log('Cachade rum');
-      return res.status(200).json(JSON.parse(cached));
+      // Om cachedRooms finns, försök parse, annars return tom array
+      let rooms;
+      try {
+        rooms = JSON.parse(cachedRooms);
+      } catch (err) {
+        console.warn('Fel vid parsning av cache, rensar cache', err);
+        await redis.del('rooms');
+        rooms = [];
+      }
+      return res.status(200).json(rooms);
     }
 
+    // Hämta från databasen
     const rooms = await Room.find();
-    await redis.set('rooms', JSON.stringify(rooms), { ex: 60 }); // 60 sek cache
 
+    // Spara i cache 
+    await redis.set('rooms', JSON.stringify(rooms), { ex: 60 });
     console.log('Cache-lagrade rum');
+
     res.status(200).json(rooms);
+
   } catch (err) {
     console.error('Fel vid hämtande av rum:', err);
     res.status(500).json({ message: 'Kunde inte hämta rum' });

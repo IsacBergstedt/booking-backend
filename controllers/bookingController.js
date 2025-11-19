@@ -7,16 +7,14 @@ exports.createBooking = async (req, res) => {
   try {
     const { roomId, startTime, endTime } = req.body;
 
-    // Kontroll om rummet finns
     const room = await Room.findById(roomId);
     if (!room) return res.status(404).json({ message: 'Rummet finns inte' });
 
-    // Dubbelbokningskontroll
     const overlapping = await Booking.findOne({
       roomId,
       $or: [
         { startTime: { $lt: new Date(endTime), $gte: new Date(startTime) } },
-        { endTime: { $gt: new Date(startTime), $lte: new Date(endTime) } },
+        { endTime:   { $gt: new Date(startTime), $lte: new Date(endTime) } },
         { startTime: { $lte: new Date(startTime) }, endTime: { $gte: new Date(endTime) } }
       ]
     });
@@ -32,7 +30,6 @@ exports.createBooking = async (req, res) => {
 
     await booking.save();
 
-    // Notifiering via Socket
     const io = socket.getIO();
     io.emit('newBooking', { message: 'Ny bokning skapad', booking });
 
@@ -60,7 +57,7 @@ exports.getBookings = async (req, res) => {
   }
 };
 
-// Uppdatera bokning (Admin eller skapare)
+// Uppdatera bokning
 exports.updateBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -82,7 +79,7 @@ exports.updateBooking = async (req, res) => {
   }
 };
 
-// Ta bort bokning (Admin eller skapare)
+// Ta bort bokning
 exports.deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -91,7 +88,7 @@ exports.deleteBooking = async (req, res) => {
     if (req.user.role !== 'Admin' && booking.userId.toString() !== req.user.id)
       return res.status(403).json({ message: 'Inte behörig att ta bort bokningen' });
 
-    await booking.remove();
+    await Booking.findByIdAndDelete(req.params.id);
 
     const io = socket.getIO();
     io.emit('deleteBooking', { message: 'Bokning borttagen', bookingId: req.params.id });

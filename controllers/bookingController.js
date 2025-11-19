@@ -7,7 +7,7 @@ exports.createBooking = async (req, res) => {
   try {
     const { roomId, startTime, endTime } = req.body;
 
-    // Kontrollera om rummet finns
+    // Kontroll om rummet finns
     const room = await Room.findById(roomId);
     if (!room) return res.status(404).json({ message: 'Rummet finns inte' });
 
@@ -32,7 +32,7 @@ exports.createBooking = async (req, res) => {
 
     await booking.save();
 
-    // Notifiering via Socket.io
+    // Notifiering via Socket
     const io = socket.getIO();
     io.emit('newBooking', { message: 'Ny bokning skapad', booking });
 

@@ -30,12 +30,6 @@ exports.register = async (req, res) => {
 
         await newUser.save();
 
-        // Hämta Socket.IO-objektet **efter att servern initierats**
-        const io = socket.getIO();
-        io.emit('newUser', { 
-            message: 'Ny användare registrerad',
-            user: { id: newUser._id, username: newUser.username, role: newUser.role }
-        });
 
         res.status(201).json({ message: 'Registrering lyckades' });
 
@@ -68,13 +62,6 @@ exports.login = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '6h' }
         );
-
-        // Hämta Socket.IO-objektet **efter att servern initierats**
-        const io = socket.getIO();
-        io.emit('userLogin', { 
-            message: 'Användare loggade in',
-            user: { id: user._id, username: user.username }
-        });
 
         // Skicka token och användarinfo som svar
         res.status(200).json({

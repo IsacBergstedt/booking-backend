@@ -2,131 +2,103 @@ const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const socket = require('../socket');
 
-// Kontroll om rum är ledigt, stoppar överlappande bokningar
-async function isRoomAvailable(roomId, startTime, endTime) {
-    const overBooked = await Booking.findOne({
-        roomId: roomId,
-        $or: [
-            { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
-        ]
-    });
-    return !overBooked;
-}
-
-// Skapar bokning
+// Skapa bokning
 exports.createBooking = async (req, res) => {
-    console.log('auth decoded user:', req.user);
-    try {
-        const { roomId, startTime, endTime } = req.body;
+  try {
+    const { roomId, startTime, endTime } = req.body;
 
-        if (new Date(startTime) >= new Date(endTime)) {
-            return res.status(400).json({ message: 'Starttid måste vara före sluttid' });
-        }
+    // Kontrollera om rummet finns
+    const room = await Room.findById(roomId);
+    if (!room) return res.status(404).json({ message: 'Rummet finns inte' });
 
-        const room = await Room.findById(roomId);
-        if (!room) return res.status(404).json({ message: 'Rummet finns inte' });
+    // Dubbelbokningskontroll
+    const overlapping = await Booking.findOne({
+      roomId,
+      $or: [
+        { startTime: { $lt: new Date(endTime), $gte: new Date(startTime) } },
+        { endTime: { $gt: new Date(startTime), $lte: new Date(endTime) } },
+        { startTime: { $lte: new Date(startTime) }, endTime: { $gte: new Date(endTime) } }
+      ]
+    });
 
-        const available = await isRoomAvailable(roomId, startTime, endTime);
-        if (!available) {
-            return res.status(400).json({ message: 'Rummet är redan bokat' });
-        }
+    if (overlapping) return res.status(400).json({ message: 'Rummet är redan bokat under denna tid' });
 
-        const booking = new Booking({
-            roomId,
-            userId: req.user.userId,
-            startTime,
-            endTime
-        });
+    const booking = new Booking({
+      roomId,
+      userId: req.user.id || req.user.userId,
+      startTime,
+      endTime,
+    });
 
-        await booking.save();
+    await booking.save();
 
-        
-        const io = socket.getIO();
-        io.emit('newBooking', { message: 'Bokning skapad', booking });
+    // Notifiering via Socket.io
+    const io = socket.getIO();
+    io.emit('newBooking', { message: 'Ny bokning skapad', booking });
 
-        res.status(201).json({ message: 'Bokning skapad', booking });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Fel vid bokning' });
-    }
+    res.status(201).json({ message: 'Bokning skapad', booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Kunde inte skapa bokning' });
+  }
 };
 
 // Hämta bokningar
 exports.getBookings = async (req, res) => {
-    try {
-        let bookings;
-
-        if (req.user.role === 'Admin') {
-            bookings = await Booking.find().populate('roomId').populate('userId');
-        } else {
-            bookings = await Booking.find({ userId: req.user.userId }).populate('roomId');
-        }
-
-        res.status(200).json(bookings);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Fel vid hämtning av bokningar' });
+  try {
+    let bookings;
+    if (req.user.role === 'Admin') {
+      bookings = await Booking.find().populate('roomId').populate('userId');
+    } else {
+      bookings = await Booking.find({ userId: req.user.id }).populate('roomId');
     }
+
+    res.status(200).json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Kunde inte hämta bokningar' });
+  }
 };
 
-// Uppdatera bokning
+// Uppdatera bokning (Admin eller skapare)
 exports.updateBooking = async (req, res) => {
-    try {
-        const bookingId = req.params.id;
-        const { startTime, endTime } = req.body;
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Bokning hittades inte' });
 
-        if (!startTime || !endTime) {
-            return res.status(400).json({ message: 'Starttid och sluttid krävs' });
-        }
+    if (req.user.role !== 'Admin' && booking.userId.toString() !== req.user.id)
+      return res.status(403).json({ message: 'Inte behörig att uppdatera bokningen' });
 
-        const booking = await Booking.findById(bookingId);
-        if (!booking) return res.status(404).json({ message: 'Bokning hittades ej' });
+    Object.assign(booking, req.body);
+    await booking.save();
 
-        if (req.user.userId !== booking.userId.toString() && req.user.role !== 'Admin') {
-            return res.status(403).json({ message: 'Ej behörig att ändra denna bokning' });
-        }
+    const io = socket.getIO();
+    io.emit('updateBooking', { message: 'Bokning uppdaterad', booking });
 
-        const isAvailable = await isRoomAvailable(booking.roomId, startTime, endTime, booking._id);
-        if (!isAvailable) {
-            return res.status(400).json({ message: 'Rummet redan bokat under den valda tiden' });
-        }
-
-        booking.startTime = startTime;
-        booking.endTime = endTime;
-        await booking.save();
-
-        const io = socket.getIO();
-        io.emit('updateBooking', { message: 'Bokning uppdaterad', booking });
-
-        res.status(200).json({ message: 'Bokning uppdaterad', booking });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Fel vid uppdatering' });
-    }
+    res.status(200).json({ message: 'Bokning uppdaterad', booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Kunde inte uppdatera bokning' });
+  }
 };
 
-
-// Ta bort bokning
+// Ta bort bokning (Admin eller skapare)
 exports.deleteBooking = async (req, res) => {
-    try {
-        const booking = await Booking.findById(req.params.id);
-        if (!booking) return res.status(404).json({ message: 'Bokning hittades inte' });
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Bokning hittades inte' });
 
-        if (req.user.userId !== booking.userId.toString() && req.user.role !== 'Admin') {
-            return res.status(403).json({ message: 'Ej behörig att ta bort denna bokning' });
-        }
+    if (req.user.role !== 'Admin' && booking.userId.toString() !== req.user.id)
+      return res.status(403).json({ message: 'Inte behörig att ta bort bokningen' });
 
-        await booking.deleteOne();
+    await booking.remove();
 
-        const io = socket.getIO();
-        io.emit('deleteBooking', { message: 'Bokning borttagen', booking });
+    const io = socket.getIO();
+    io.emit('deleteBooking', { message: 'Bokning borttagen', bookingId: req.params.id });
 
-        res.status(200).json({ message: 'Bokning borttagen' });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Fel vid borttagning' });
-    }
+    res.status(200).json({ message: 'Bokning borttagen' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Kunde inte ta bort bokning' });
+  }
 };

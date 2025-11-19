@@ -1,23 +1,9 @@
-const { createClient } = require('redis');
+// redisClient.js
+const { Redis } = require('@upstash/redis');
 
-const client = createClient({
-    url: 'redis://:hej@172.29.88.168:6379'
+const client = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-client.on('error', (err) => {
-    console.error('redis connection error', err);
-});
-
-
-async function connectRedis() {
-    if (!client.isOpen) {
-        await client.connect()
-
-    
-    }
-}
-
-module.exports = { 
-    client,
-    connectRedis
-};
+module.exports = client;

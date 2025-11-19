@@ -1,93 +1,79 @@
 const Room = require('../models/Room');
-const { client, connectRedis } = require('../redisClient');
+const redis = require('../redisClient');
 const socket = require('../socket');
 
+// Middleware ska kolla att req.user.role === 'Admin'
 
-
-
-//Admin kan skapa nytt rum
 exports.createRoom = async (req, res) => {
-    try {
-        await connectRedis(); 
-
-        const { name, capacity, type } = req.body;
-        const newRoom = new Room({ name, capacity, type });
-        await newRoom.save();
-
-        await client.del('rooms'); 
-
-        const io = socket.getIO();
-        io.emit('newRoom', {
-            message: 'Nytt rum skapat',
-            room: { id: newRoom._id, name: newRoom.name, capacity: newRoom.capacity }
-        });
-
-        res.status(201).json({ message: 'Rum skapades', room: newRoom });
-    } catch (err) {
-        console.error('Fel vid skapande av rum:', err);
-        res.status(500).json({ message: 'Fel vid skapande av rum' });
-    }
-};
-
-// Hämta alla rum (alla användare)
-exports.getRooms = async (req, res) => {
   try {
-    const cachedRooms = await client.get('rooms');
+    const { name, capacity, type } = req.body;
 
-    if (cachedRooms) {
-      console.log('cachade rum')
-      return res.status(200).json(JSON.parse(cachedRooms));
-    }
+    const newRoom = new Room({ name, capacity, type });
+    await newRoom.save();
 
-    const rooms = await Room.find();
+    await redis.del('rooms'); // ta bort cache
 
-    await client.setEx('rooms', 60, JSON.stringify(rooms));
-    console.log('cache-lagrade rum')
-    
-    res.status(200).json(rooms);
+    const io = socket.getIO();
+    io.emit('newRoom', { message: 'Nytt rum skapat', room: newRoom });
 
+    res.status(201).json({ message: 'Rum skapades', room: newRoom });
   } catch (err) {
-    console.error('Fel vid hämtande av rum:', err);
-    res.status(500).json({message: 'kunde inte hämta rum'});
+    console.error('Fel vid skapande av rum:', err);
+    res.status(500).json({ message: 'Fel vid skapande av rum' });
   }
 };
 
-
-// Uppdatera rum (endast Admin)
-exports.updateRoom = async (req, res) => {
+exports.getRooms = async (req, res) => {
   try {
-    const roomId = req.params.id;
-    const updates = req.body;
+    const cached = await redis.get('rooms');
 
-    const updatedRoom = await Room.findByIdAndUpdate(roomId, updates, { new: true });
-
-    if (!updatedRoom) {
-      return res.status(404).json({ message: 'Rum hittades inte' });
+    if (cached) {
+      console.log('Cachade rum');
+      return res.status(200).json(JSON.parse(cached));
     }
 
-    await client.del('rooms'); //ta bort cache
+    const rooms = await Room.find();
+    await redis.set('rooms', JSON.stringify(rooms), { ex: 60 }); // 60 sek cache
+
+    console.log('Cache-lagrade rum');
+    res.status(200).json(rooms);
+  } catch (err) {
+    console.error('Fel vid hämtande av rum:', err);
+    res.status(500).json({ message: 'Kunde inte hämta rum' });
+  }
+};
+
+exports.updateRoom = async (req, res) => {
+  try {
+    const updatedRoom = await Room.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    if (!updatedRoom) return res.status(404).json({ message: 'Rum hittades inte' });
+
+    await redis.del('rooms');
+
+    const io = socket.getIO();
+    io.emit('updateRoom', { message: 'Rum uppdaterat', room: updatedRoom });
 
     res.status(200).json({ message: 'Rum uppdaterat', room: updatedRoom });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Kunde inte uppdatera rum' });
   }
 };
 
-// Ta bort rum (endast Admin)
 exports.deleteRoom = async (req, res) => {
   try {
-    const roomId = req.params.id;
+    const deletedRoom = await Room.findByIdAndDelete(req.params.id);
+    if (!deletedRoom) return res.status(404).json({ message: 'Rum hittades inte' });
 
-    const deletedRoom = await Room.findByIdAndDelete(roomId);
+    await redis.del('rooms');
 
-    if (!deletedRoom) {
-      return res.status(404).json({ message: 'Rum hittades inte' });
-    }
-
-    await client.del('rooms'); //ta bort cache
+    const io = socket.getIO();
+    io.emit('deleteRoom', { message: 'Rum borttaget', roomId: req.params.id });
 
     res.status(200).json({ message: 'Rum borttaget' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Kunde inte ta bort rum' });
   }
 };

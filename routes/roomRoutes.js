@@ -11,9 +11,9 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 
 // Routs
-router.post('/', protect, adminOnly, createRoom); //Skapa nytt rum
-router.get('/', protect, getRooms); //Hämta alla rum
-router.put('/:id', protect, adminOnly, updateRoom); //Uppdatera rum
-router.delete('/:id', protect, adminOnly, deleteRoom); //Ta bort rum
+router.post('/', protect, adminOnly, createRoom); 
+router.get('/', protect, getRooms); 
+router.put('/:id', protect, adminOnly, updateRoom); 
+router.delete('/:id', protect, adminOnly, deleteRoom); 
 
 module.exports = router;

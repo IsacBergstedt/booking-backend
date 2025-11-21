@@ -12,6 +12,7 @@ Skapa en .env-fil:
 
 PORT=5000
 MONGO_URI=mongodb+srv://isacbergstedt:isaclösen@cluster0.ie4viad.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+
 JWT_SECRET=superhemligjwtkod
 UPSTASH_REDIS_URL=AXnwAAIncDJjNjkzYjYwYWE5ODM0M2U4YjljOTIyMGMyZTIxNmQ4MHAyMzEyMTY
 UPSTASH_REDIS_TOKEN=https://brave-eel-31216.upstash.io
